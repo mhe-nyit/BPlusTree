@@ -58,7 +58,7 @@ public class BPlusTree {
 
             while(result.size()!=10){
                 index++;
-                if(index<products.length){
+                if(index < leafNode.numberOfEntry){
                     if(products[index]!=null){
                         result.add(products[index]);
                     }
@@ -99,7 +99,7 @@ public class BPlusTree {
         }
         if (isEmpty()) {
             leafHead = new BPlusLeafNode(new Product(id, description));
-
+            treeDepth = 1;
         } else {
 
             BPlusLeafNode leafNode;
@@ -107,14 +107,19 @@ public class BPlusTree {
             else leafNode = getPossibleLeafNode(id);
 
             boolean success = leafNode.insertProduct(new Product(id, description));
-
+            
             if (!success) {
 
                 leafNode.products[leafNode.numberOfEntry] = new Product(id, description);
                 leafNode.numberOfEntry++;
+                
                 sortEntries(leafNode.products);
+                
                 int mid = leafNode.products.length / 2;
                 Product[] half = splitEntries(leafNode, mid);
+                
+                totalSplits++;
+                
                 if (leafNode.parent != null) {
                     String newParentId = half[0].partId;
                     leafNode.parent.productIDs[leafNode.parent.numberOfEntry - 1] = newParentId;
@@ -154,6 +159,7 @@ public class BPlusTree {
                     }
                 } else {
                     root = leafNode.parent;
+                    treeDepth++;
                 }
             }
         }
@@ -223,6 +229,12 @@ public class BPlusTree {
                         parent.removePointer(leafNode);
 
                         sibling.rightSibling = leafNode.rightSibling;
+                        if (leafNode.rightSibling != null) {
+                            leafNode.rightSibling.leftSibling = sibling;
+                        }
+
+                        totalFusions++;
+                        if (parent.parent != null) parentFusions++;
 
                         if (parent.hasLowerThenMinimum()) {
                             fixDeficiency(parent);
@@ -242,7 +254,13 @@ public class BPlusTree {
                         sibling.leftSibling = leafNode.leftSibling;
                         if (sibling.leftSibling == null) {
                             leafHead = sibling;
+                        } else {
+                            sibling.leftSibling.rightSibling = sibling;
                         }
+
+                        totalFusions++;
+                        
+                        if (parent.parent != null) parentFusions++;
 
                         if (parent.hasLowerThenMinimum()) {
                             fixDeficiency(parent);
@@ -331,15 +349,12 @@ public class BPlusTree {
     }
 
     private int getIndexOfPointer(BPlusNode[] pointers, BPlusLeafNode node) {
-        int i;
-        i = 0;
-        while (i < pointers.length) {
+        for (int i = 0; i < pointers.length; i++) {
             if (pointers[i] == node) {
                 return i;
             }
-            i++;
         }
-        return i;
+        return -1;
     }
 
     private int getMidPoint() {
@@ -358,12 +373,39 @@ public class BPlusTree {
                     if (in.indexPointers[i] instanceof BPlusIndexNode) {
                         this.root = (BPlusIndexNode) in.indexPointers[i];
                         this.root.parent = null;
+                        treeDepth--;
                     } else if (in.indexPointers[i] instanceof BPlusLeafNode) {
                         this.root = null;
+                        treeDepth--;
                     }
+                    break;
                 }
             }
         } else if (in.leftSibling != null && in.leftSibling.canLend()) {
+        	sibling = in.leftSibling;
+        	
+        	String borrowedKey = sibling.productIDs[sibling.numberOfEntry - 1];
+            BPlusNode borrowedPointer = sibling.indexPointers[sibling.numberOfEntry];
+            
+            for (int i = in.numberOfEntry - 1; i >= 0; i--) {
+                in.productIDs[i + 1] = in.productIDs[i];
+            }
+            for (int i = in.numberOfEntry; i >= 0; i--) {
+                in.indexPointers[i + 1] = in.indexPointers[i];
+            }
+            
+            int parentIndex = parent.getIndexOfPointer(in);
+            in.productIDs[0] = parent.productIDs[parentIndex - 1];
+            in.indexPointers[0] = borrowedPointer;
+            if (borrowedPointer != null) borrowedPointer.parent = in;
+            in.numberOfEntry++;
+            
+            parent.productIDs[parentIndex - 1] = borrowedKey;
+            
+            sibling.productIDs[sibling.numberOfEntry - 1] = null;
+            sibling.indexPointers[sibling.numberOfEntry] = null;
+            sibling.numberOfEntry--;
+        	
             totalFusions++;
             if(in.parent != null){
                 parentFusions++;
@@ -376,13 +418,28 @@ public class BPlusTree {
 
             in.productIDs[in.numberOfEntry - 1] = parent.productIDs[0];
             in.indexPointers[in.numberOfEntry] = pointer;
+            
+            if (pointer != null) {
+            	pointer.parent = in;
+            }
+            in.numberOfEntry++;
 
             parent.productIDs[0] = siblingFirstId;
+            
+            for (int i = 0; i < sibling.numberOfEntry - 1; i++) {
+                sibling.productIDs[i] = sibling.productIDs[i + 1];
+            }
+            for (int i = 0; i < sibling.numberOfEntry; i++) {
+                sibling.indexPointers[i] = sibling.indexPointers[i + 1];
+            }
+            sibling.productIDs[sibling.numberOfEntry - 1] = null;
+            sibling.indexPointers[sibling.numberOfEntry] = null;
+            sibling.numberOfEntry--;
 
-            sibling.removePointer(0);
-            Arrays.sort(sibling.productIDs);
-            sibling.removePointer(0);
-            shiftDown(in.indexPointers);
+            totalFusions++;
+            if (in.parent != null) {
+            	parentFusions++;
+            }
 
         } else if (in.rightSibling != null && in.rightSibling.canMerge()) {
             sibling = in.rightSibling;
@@ -424,10 +481,10 @@ public class BPlusTree {
     }
 
     private void shiftDown(BPlusNode[] pointers) {
-        BPlusNode[] newPointers = new BPlusNode[pointers.length];
         for (int i = 1; i < pointers.length; i++) {
-            newPointers[i - 1] = pointers[i];
+            pointers[i - 1] = pointers[i];
         }
+        pointers[pointers.length - 1] = null;
     }
 
     private void sortEntries(Product[] dictionary) {
@@ -539,10 +596,10 @@ public class BPlusTree {
     }
 
     public void printStaistic(){
-        System.out.println("Total TotalSplits: " + totalSplits);
-        System.out.println("Total ParentSplits: " + parentSplits);
-        System.out.println("Total TotalFusions: " + totalFusions);
-        System.out.println("Total ParentFusions: " + parentFusions);
-        System.out.println(("Total treeDepth: " + treeDepth));
+        System.out.println("Total Splits:        " + totalSplits);
+        System.out.println("Total Parent Splits: " + parentSplits);
+        System.out.println("Total Fusions:       " + totalFusions);
+        System.out.println("Total Parent Fusions:" + parentFusions);
+        System.out.println("Tree Depth:          " + treeDepth);
     }
 }
