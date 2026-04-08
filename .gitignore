@@ -1,0 +1,16 @@
+# Compiled output
+bin/
+*.class
+
+# Eclipse project files
+.classpath
+.project
+.settings/
+
+# OS clutter
+.DS_Store
+Thumbs.db
+
+# IntelliJ (if teammates use it)
+.idea/
+*.iml
