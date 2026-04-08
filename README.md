@@ -1,1 +1,1 @@
-# BPlusTree - CSCI-651 Algorithm Concepts Project
+# BPlusTree
