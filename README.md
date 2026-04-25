@@ -20,8 +20,7 @@ CSCI 651: Algorithm Concepts - Spring 2026
 
    **Mac / Linux**
    ```
-   find src -name "*.java" > sources.txt
-   javac -d out @sources.txt
+   find src -name "*.java" | xargs javac -d out
    ```
 
 4. Run the application:
