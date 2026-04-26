@@ -2,15 +2,21 @@
 
 CSCI 651: Algorithm Concepts - Spring 2026
 
+## Latest Release 🔗
+
+<a href="https://github.com/mhe-nyit/BPlusTree/releases/download/prod-release/partscatalog.jar">
+  <img src="https://img.shields.io/badge/Download-partscatalog.jar-darkblue?style=for-the-badge" />
+</a>
+
 ## How to Run
 
 ### Requirements
-- Java 17 or higher
+- Java 17+ or higher
 
 ### Steps
 
-1. Clone or download the repository
-2. Open a terminal and navigate to the project folder
+1. Clone the repository
+2. Open terminal and navigate to the project directory
 3. Compile source files:
 
    **Windows**
